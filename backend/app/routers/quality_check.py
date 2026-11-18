@@ -97,3 +97,14 @@ def execute_check(entry_id: int) -> dict[str, Any]:
     """执行稽核规则：读取目标表数据，运行校验表达式。"""
     result = service.execute_check(entry_id)
     return result
+
+
+@router.post("/{entry_id}/writeback_compare")
+def writeback_compare(entry_id: int) -> ActionResult:
+    """质量稽核跨模块回写表级比对差异报告（复用已落库稽核结论）。"""
+    entry = service.get_entry(entry_id)
+    if entry is None:
+        return ActionResult(ok=False, message=f"稽核规则 {entry_id} 不存在或已归档")
+    outcome = service.writeback_compare_report(str(entry.get("规则编号", "")))
+    return ActionResult(ok=bool(outcome.get("ok")), message=outcome.get("message", ""),
+                        entry=outcome.get("note"))

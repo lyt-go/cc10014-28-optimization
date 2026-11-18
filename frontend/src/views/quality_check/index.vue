@@ -48,6 +48,12 @@
             >
               {{ action }}
             </button>
+            <button class="link" type="button" :data-testid="`execute-${row.id}`" @click="executeCheck(row)">
+              执行稽核
+            </button>
+            <button class="link" type="button" :data-testid="`writeback-${row.id}`" @click="writebackCompare(row)">
+              回写比对报告
+            </button>
           </td>
         </tr>
         <tr v-if="!rows.length">
@@ -165,6 +171,30 @@ async function runAction(action: string, row: Row) {
     await reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '质量稽核操作失败'
+  }
+}
+
+async function executeCheck(row: Row) {
+  errorMessage.value = ''
+  try {
+    const response = await request(`${ENDPOINT}/${row.id}/execute`, { method: 'POST' })
+    const payload = await response.json()
+    if (!response.ok || !payload.ok) throw new Error(payload.message || '稽核执行失败')
+    await reload()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '稽核执行失败'
+  }
+}
+
+async function writebackCompare(row: Row) {
+  errorMessage.value = ''
+  try {
+    const response = await request(`${ENDPOINT}/${row.id}/writeback_compare`, { method: 'POST' })
+    const payload = await response.json()
+    if (!response.ok || !payload.ok) throw new Error(payload.message || '回写失败')
+    await reload()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '回写表级比对差异报告失败'
   }
 }
 

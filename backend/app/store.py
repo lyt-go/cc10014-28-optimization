@@ -29,6 +29,8 @@ class Store:
         self._archive_records: list[dict[str, Any]] = []
         # 补数区间记录
         self._backfill_partitions: dict[str, list[dict[str, Any]]] = {}
+        # 表级比对差异报告: entry_id -> 报告文档（采样结果与重检批次同文档落库）
+        self._compare_reports: dict[int, dict[str, Any]] = {}
 
     def module_names(self) -> list[str]:
         return sorted(self._tables)
@@ -165,6 +167,39 @@ class Store:
 
     def get_backfill_partitions(self, job_id: str) -> list[dict[str, Any]]:
         return list(self._backfill_partitions.get(job_id, []))
+
+    # ---- 表级比对差异报告 ----
+    # 采样结果与重检批次保存在同一份报告文档内，要么整体提交、要么回滚到旧版本，
+    # 避免“报告存了采样差异、稽核却读到另一套全量明细”的相反结论。
+
+    def save_compare_report(self, report: dict[str, Any]) -> None:
+        entry_id = int(report["entry_id"])
+        self._compare_reports[entry_id] = report
+
+    def get_compare_report(self, entry_id: int) -> dict[str, Any] | None:
+        report = self._compare_reports.get(int(entry_id))
+        return dict(report) if report is not None else None
+
+    def list_compare_reports(self) -> list[dict[str, Any]]:
+        return [dict(report) for report in self._compare_reports.values()]
+
+    def delete_compare_report(self, entry_id: int) -> bool:
+        return self._compare_reports.pop(int(entry_id), None) is not None
+
+    def find_compare_report_by_tables(self, left_table: str, right_table: str) -> dict[str, Any] | None:
+        for report in self._compare_reports.values():
+            if report.get("left_table") == left_table and report.get("right_table") == right_table:
+                return dict(report)
+        return None
+
+    def add_compare_quality_note(self, entry_id: int, note: dict[str, Any]) -> dict[str, Any] | None:
+        """质量稽核跨模块回写：只在已落库报告上追加稽核结论，不另起全量明细。"""
+        report = self._compare_reports.get(int(entry_id))
+        if report is None:
+            return None
+        report.setdefault("quality_notes", []).append(note)
+        report["updated_at"] = note.get("written_at", report.get("updated_at"))
+        return dict(report)
 
 
 store = Store()

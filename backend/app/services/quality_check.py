@@ -101,7 +101,36 @@ class QualityCheckService:
             "failed_rows": failed_rows[:5],  # 只保留前5条
         }
         store.save_quality_result(entry.get("规则编号", ""), result)
+        # 跨模块回写表级比对差异报告：只在已落库报告上追加稽核结论，
+        # 不重新读取全量明细，保证稽核结论与报告采样/重检口径一致。
+        self._writeback_compare_report(entry, result)
         return {"ok": True, "message": f"稽核完成：通过{total - failed}/失败{failed}", "result": result}
+
+    def writeback_compare_report(self, rule_id: str) -> dict[str, Any]:
+        """按规则编号重放最近一次稽核结论并回写到对应表的表级比对差异报告。"""
+        entry = store.find_by_field(MODULE, "规则编号", rule_id)
+        if entry is None:
+            return {"ok": False, "message": f"稽核规则 {rule_id} 不存在"}
+        history = store.get_quality_results(rule_id)
+        if not history:
+            return {"ok": False, "message": f"规则 {rule_id} 尚无稽核结果，请先执行稽核"}
+        result = history[-1]
+        note = self._writeback_compare_report(entry, result)
+        if note is None:
+            return {"ok": False, "message": f"表 {entry.get('校验表名', '')} 暂无已落库的表级比对差异报告，回写跳过"}
+        return {"ok": True, "message": "稽核结论已回写表级比对差异报告", "note": note}
+
+    def _writeback_compare_report(self, entry: dict[str, Any], result: dict[str, Any]) -> dict[str, Any] | None:
+        from app.services.table_compare import TableCompareService
+
+        service = TableCompareService()
+        return service.recheck_quality_writeback(
+            rule_id=str(entry.get("规则编号", "")),
+            table=str(entry.get("校验表名", "")),
+            field=str(entry.get("校验字段", "")),
+            total=int(result.get("total", 0)),
+            failed=int(result.get("failed", 0)),
+        )
 
     def _check_value(self, val: Any, expr: str, lower: str, upper: str) -> bool:
         if expr:

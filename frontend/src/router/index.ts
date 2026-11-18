@@ -15,6 +15,7 @@ const QualityCheck = () => import('@/views/quality_check/index.vue')
 const LineageTrack = () => import('@/views/lineage_track/index.vue')
 const BackfillJob = () => import('@/views/backfill_job/index.vue')
 const TableCompare = () => import('@/views/table_compare/index.vue')
+const TableCompareReport = () => import('@/views/table_compare/ReportView.vue')
 const SchemaRegistry = () => import('@/views/schema_registry/index.vue')
 const DataPublish = () => import('@/views/data_publish/index.vue')
 const TransformDag = () => import('@/views/transform_dag/index.vue')
@@ -38,6 +39,7 @@ const router = createRouter({
     { path: '/lineage_track', name: 'lineage_track', component: LineageTrack },
     { path: '/backfill_job', name: 'backfill_job', component: BackfillJob },
     { path: '/table_compare', name: 'table_compare', component: TableCompare },
+    { path: '/table_compare/:id/report', name: 'table_compare_report', component: TableCompareReport },
     { path: '/schema_registry', name: 'schema_registry', component: SchemaRegistry },
     { path: '/data_publish', name: 'data_publish', component: DataPublish },
     { path: '/transform_dag', name: 'transform_dag', component: TransformDag },

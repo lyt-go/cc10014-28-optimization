@@ -62,7 +62,7 @@ npm run dev
 | 质量稽核 | `quality_check` | 稽核规则 | 规则编号、校验表名、校验字段 |
 | 血缘追踪 | `lineage_track` | 血缘链路 | 链路编号、上游表名、下游表名 |
 | 补数调度 | `backfill_job` | 补数任务 | 任务编号、目标表名、起始日期 |
-| 表级比对 | `table_compare` | 比对任务 | 任务编号、左表名称、右表名称 |
+| 表级比对 | `table_compare` | 比对任务/差异报告 | 任务编号、左表名称、右表名称、采样比例、字段级差异、重检批次 |
 | 结构注册 | `schema_registry` | 结构定义 | 定义编号、表名称、字段名称 |
 | 数据发布 | `data_publish` | 发布版本 | 版本编号、数据集名称、发布范围 |
 | 转换编排 | `transform_dag` | 转换节点 | 节点编号、输入表名、输出表名 |
@@ -74,6 +74,10 @@ npm run dev
   `backend/app/routers/<模块>.py`，业务规则在 `backend/app/services/<模块>.py`。
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
+- 表级比对差异报告（`/api/table_compare/{id}/report`）按批次（默认 500 行/批）扫描左右表，
+  采样批次给估算结果、全量批次给精确结果；高风险字段自动全量重检，采样结果与重检批次
+  同文档落库、事务失败整体回滚。质量稽核通过 `/api/quality_check/{id}/writeback_compare`
+  只回写已落库报告，不重扫全量明细，避免两侧结论相反。
 
 领域：数据工程
 子方向：数仓与数据湖
